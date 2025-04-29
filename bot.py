@@ -9,7 +9,7 @@ load_dotenv()
 RIOT_API_KEY = os.getenv("RIOT_API_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Mapping per platform routing in match-v5
+# Mapping for platform routing in match-v5
 REGION_ROUTING = {
     "euw1": "europe",
     "eun1": "europe",
@@ -26,29 +26,29 @@ REGION_ROUTING = {
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message:
-        await update.message.reply_text("Ciao! Usa il comando /risultati GAME_NAME#TAG_LINE (es. /risultati Caps#EUW)")
+        await update.message.reply_text("Hi! Use the command /games GAME_NAME#TAG_LINE (es. /games Fusco#Euwz")
 
 async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
 
     if len(context.args) != 1:
-        await update.message.reply_text("Formato non valido. Usa: /risultati GAME_NAME#TAG_LINE (es. /risultati Caps#EUW)")
+        await update.message.reply_text("Invalid format. Use: /games GAME_NAME#TAG_LINE (es. /games Fusco#Euwz")
         return
 
     riot_id_full = context.args[0]
     
     if "#" not in riot_id_full:
-        await update.message.reply_text("Formato Riot ID non valido. Usa GAME_NAME#TAG_LINE (es. /risultati Caps#EUW)")
+        await update.message.reply_text("Riot ID format invalid. Use GAME_NAME#TAG_LINE (es. /games Fusco#Euwz")
         return
     
-    # Separare il game_name e il tag_line
+    # Splits the game name and the tag line
     game_name, tag_line = riot_id_full.split("#")
-    tag_line = tag_line.upper()  # Per uniformare
+    tag_line = tag_line.upper()  # To uniform
 
     riot_id = f"{game_name}#{tag_line}"
 
-    print(f"Richiesta per Riot ID: '{riot_id}'")
+    print(f"Requests for Riot ID: '{riot_id}'")
 
     headers = {"X-Riot-Token": RIOT_API_KEY}
     account_url = f"https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}"
@@ -57,18 +57,18 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
         res = requests.get(account_url, headers=headers)
         print("Status code account API:", res.status_code)
         if res.status_code == 404:
-            await update.message.reply_text("Riot ID non trovato.")
+            await update.message.reply_text("Riot ID not found.")
             return
         res.raise_for_status()
         data = res.json()
         puuid = data["puuid"]
     except Exception as e:
-        print("Errore nella richiesta Riot ID:", e)
-        await update.message.reply_text("Errore nel recuperare il Riot ID.")
+        print("Error in the Riot ID request:", e)
+        await update.message.reply_text("Error in finding the Riot ID.")
         return
 
-    # Ottieni regione a partire dal tag_line
-    # Per semplicità usiamo hardcoded mapping: puoi migliorarlo se vuoi
+    # Get the region from the tag line
+    # Using the hardcoded mapping for ease of use (might change it later)
     inferred_region = None
     for short, platform in REGION_ROUTING.items():
         if tag_line.lower() in short:
@@ -84,21 +84,21 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         match_ids = requests.get(matchlist_url, headers=headers).json()
     except Exception as e:
-        print("Errore nel recuperare le partite:", e)
-        await update.message.reply_text("Errore nel recuperare le partite.")
+        print("Error in finding the games:", e)
+        await update.message.reply_text("Error in finding the games.")
         return
 
-    result = f"Ultime 5 partite di {riot_id}:\n"  # Modifica il testo di risposta
+    result = f"Last 5 games of {riot_id}:\n"  # Changes the response text
     for match_id in match_ids:
         match_url = f"https://{platform_routing}.api.riotgames.com/lol/match/v5/matches/{match_id}"
         match_data = requests.get(match_url, headers=headers).json()
         try:
             participants = match_data["info"]["participants"]
             player = next(p for p in participants if p["puuid"] == puuid)
-            win = "VITTORIA" if player["win"] else "SCONFITTA"
+            win = "VICTORY" if player["win"] else "DEFEAT"
             result += f"- {player['championName']} | {win} | {player['kills']}/{player['deaths']}/{player['assists']}\n"
         except Exception as e:
-            print(f"Errore nella partita {match_id}:", e)
+            print(f"Error in the match {match_id}:", e)
             continue
 
     await update.message.reply_text(result)
@@ -106,6 +106,6 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("risultati", get_matches))
-    print("Bot avviato.")
+    app.add_handler(CommandHandler("games", get_matches))
+    print("Bot started.")
     app.run_polling()
