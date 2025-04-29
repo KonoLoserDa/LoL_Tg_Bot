@@ -53,7 +53,7 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     headers = {"X-Riot-Token": RIOT_API_KEY}
 
-    # Cicla sulle regioni globali (europe, americas, asia)
+    # Cycles global regions (europe, americas, asia)
     for global_region, region_url in REGION_ROUTING.items():
         account_url = f"https://{region_url}/riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}"
 
@@ -63,7 +63,7 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if res.status_code == 200:
                 data = res.json()
                 puuid = data["puuid"]
-                platform_routing = global_region  # Assegna la regione globale al platform routing
+                platform_routing = global_region  # Assigns the global region to the platform routing
                 break
         except Exception as e:
             print(f"Error for region {global_region}: {e}")
@@ -72,7 +72,7 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Riot ID not found in any region.")
         return
 
-    # Ora procedi con la ricerca delle partite come prima
+    # Finding matches
     matchlist_url = f"https://{region_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=5"
     try:
         match_ids = requests.get(matchlist_url, headers=headers).json()
