@@ -1,4 +1,4 @@
-import os
+import os 
 import requests
 from dotenv import load_dotenv
 from telegram import Update
@@ -27,6 +27,15 @@ GAME_MODE_MAP = {
     "TUTORIAL_MODULE_3": "Tutorial",
 }
 
+ROLE_EMOJIS = {
+    "TOP": "🔝",
+    "JUNGLE": "🌲",
+    "MIDDLE": "🧠",
+    "BOTTOM": "🎯",
+    "UTILITY": "🛡",
+    "INVALID": "❓"
+}
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message:
         await update.message.reply_text("Hi! Use the command /games GAME_NAME#TAG_LINE (es. /games Fusco#Euwz)")
@@ -53,7 +62,6 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     headers = {"X-Riot-Token": RIOT_API_KEY}
 
-    # Cycles global regions (europe, americas, asia)
     for global_region, region_url in REGION_ROUTING.items():
         account_url = f"https://{region_url}/riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}"
 
@@ -63,7 +71,7 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if res.status_code == 200:
                 data = res.json()
                 puuid = data["puuid"]
-                platform_routing = global_region  # Assigns the global region to the platform routing
+                platform_routing = global_region
                 break
         except Exception as e:
             print(f"Error for region {global_region}: {e}")
@@ -72,7 +80,6 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Riot ID not found in any region.")
         return
 
-    # Finding matches
     matchlist_url = f"https://{region_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=5"
     try:
         match_ids = requests.get(matchlist_url, headers=headers).json()
@@ -82,10 +89,9 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     result = f"🎮 Last 5 games of {riot_id}:\n"
-    result += "```\n"  # Start of monospace block
-
-    result += f"{'Champion':<12}\t{'Result':<10}\t{'K/D/A':<9}\t{'Time':<6}\t{'Mode'}\n"
-    result += f"{'-'*54}\n"
+    result += "```\n"
+    result += f"{'Champion':<14}\t{'Result':<12}\t{'K/D/A':<8}\t{'Time':<7}\t{'Mode'}\n"
+    result += f"{'-'*58}\n"
 
     for match_id in match_ids:
         match_url = f"https://{region_url}/lol/match/v5/matches/{match_id}"
@@ -101,12 +107,15 @@ async def get_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
             mode_raw = info["gameMode"]
             mode = GAME_MODE_MAP.get(mode_raw, mode_raw)
 
-            result += f"{champ:<12} {win:<8} {kda:<9} {duration:<6} {mode}\n"
+            position = player.get("teamPosition", "INVALID")
+            role_emoji = ROLE_EMOJIS.get(position.upper(), "❓")
+
+            result += f"{role_emoji}{champ:<13} {win:<8} {kda:<9} {duration:<6} {mode}\n"
         except Exception as e:
             print(f"Error in the match {match_id}:", e)
             continue
 
-    result += "```"  # End of monospace block
+    result += "```"
     await update.message.reply_text(result, parse_mode="Markdown")
 
 if __name__ == "__main__":
