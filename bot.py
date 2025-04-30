@@ -3,6 +3,12 @@ import requests
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.error import TelegramError
+import logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.CRITICAL
+)
 
 load_dotenv()
 
@@ -123,4 +129,10 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("games", get_matches))
     print("Bot started.")
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+        logging.error(msg="Exception while handling an update:", exc_info=context.error)
+        # Sends a message to the user only if it's possible
+        if isinstance(update, Update) and update.message:
+            await update.message.reply_text("⚠️ An Error has occured. Try again later")
+    app.add_error_handler(error_handler)
     app.run_polling()
